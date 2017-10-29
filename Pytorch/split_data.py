@@ -19,8 +19,9 @@ for i in range(0, len(directory)):
     if not os.path.exists(path):
         os.makedirs(path)
 
+
 os.chdir(src + "/data/raw")
-file_list = os.listdir()
+file_list = os.listdir(src + "/data/raw")
 json_list = []
 for i in range(0, len(file_list) - 1):
     if file_list[i].endswith('.json'):
