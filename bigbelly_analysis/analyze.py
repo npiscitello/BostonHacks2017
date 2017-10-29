@@ -62,11 +62,13 @@ def tfrecord_to_tensor(example_proto):
 
 training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
 training_dataset = training_dataset.map(tfrecord_to_tensor);
-training_dataset = training_dataset.repeat();
+training_dataset = training_dataset.repeat().batch(100);
 training_iterator = training_dataset.make_one_shot_iterator();
 
-verification_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
-verification_dataset = verification_dataset.map(tfrecord_to_tensor);
+test_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
+test_dataset = test_dataset.map(tfrecord_to_tensor);
+test_dataset = test_dataset.repeat().batch(100);
+test_iterator = test_dataset.make_one_shot_iterator();
 
 # can be thought of as a 3 pixel greyscale image: lat, long, time
 x = tf.placeholder(tf.float32, [None, 3]);
@@ -79,18 +81,26 @@ b = tf.Variable(tf.zeros([3]));
 fullness = tf.matmul(x, W) + b;
 
 # placeholder for the correct answers
-fullness_ = tf.placeholder(tf.float32, [None, 1]);
+fullness_ = tf.placeholder(tf.float32, [None, 3]);
 
 # this is the cross-entropy and minimization function, how we calculate and minimize our loss. 
 cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=fullness_, logits=fullness));
-train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy);
+train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy);
 
 # run the model
-sess = tf.InteractiveSession();
-tf.global_variables_initializer().run();
+sess = tf.Session();
+sess.run(tf.global_variables_initializer());
 
-for _ in range(0,1000):
-    tensors = training_iterator.get_next();
-    input_tensor = tf.concat([tensors["latitude"], tensors["longitude"], tensors["time"]], 0);
-    print(sess.run([input_tensor]));
-    #sess.run(train_step, feed_dict={x: batch_xs, fullness_: batch_fullnesss});
+for _ in range(0,100):
+    tensor = training_iterator.get_next();
+    input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
+    verification_tensor = tensor["fullness"];
+    sess.run(train_step, {x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)});
+
+correct_prediction = tf.equal(tf.argmax(fullness,1), tf.argmax(fullness_,1));
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32));
+
+tensor = test_iterator.get_next();
+input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
+verification_tensor = tensor["fullness"];
+print("Model accuracy: ", sess.run(accuracy, feed_dict={x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)}));
