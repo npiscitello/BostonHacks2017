@@ -53,36 +53,41 @@ import tensorflow as tf
 #    }
 #  }
 
-def dataset_import():
-    dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
+def dataset_import(dataset):
     def parser(example_proto):
         features = { "latitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
                     "longitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
                     "time": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
-                    "fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
+                    #"fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
+                    "fullness": tf.FixedLenFeature(shape=[1], dtype=tf.float32) };
         parsed = tf.parse_single_example(example_proto, features);
         return { "latitude": parsed["latitude"], 
                  "longitude": parsed["longitude"], 
                  "time": parsed["time"]}, parsed["fullness"];
 
     dataset = dataset.map(parser);
-    dataset = dataset.batch(100);
-    dataset = dataset.repeat(1);
+    dataset = dataset.batch(20);
+    #dataset = dataset.repeat(1);
     iterator = dataset.make_one_shot_iterator();
 
     features, labels = iterator.get_next();
     return features, labels;
 
-training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
-test_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
+def dataset_import_train():
+    return dataset_import(tf.data.TFRecordDataset("alerts_train.tfrecords"));
+
+def dataset_import_eval():
+    return dataset_import(tf.data.TFRecordDataset("alerts_verify.tfrecords"));
 
 latitude = tf.feature_column.numeric_column("latitude");
 longitude = tf.feature_column.numeric_column("longitude");
 time = tf.feature_column.numeric_column("time");
 
-estimator = tf.estimator.LinearClassifier(feature_columns = [latitude, longitude, time], n_classes = 3);
+estimator = tf.estimator.LinearRegressor( feature_columns = [latitude, longitude, time]);
 
-estimator.train(dataset_import, steps=2000);
+estimator.train(dataset_import_train, steps=2000);
+
+print(estimator.evaluate(dataset_import_eval));
 
 
 #training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");

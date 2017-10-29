@@ -29,18 +29,28 @@ for i in f_raw:
     time = datetime.strptime(line[1], "%m/%d/%Y %I:%M:%S %p").timestamp();
 
     # output - one-hot encoded
+    #if( line[2] == "GREEN" ):
+    #    fullness = [1,0,0];
+    #elif( line[2] == "YELLOW" ):
+    #    fullness = [0,1,0];
+    #elif( line[3] == "RED" ):
+    #    fullness = [0,0,1];
+
+    # output - approx. percentage
     if( line[2] == "GREEN" ):
-        fullness = [1,0,0];
+        fullness = 0.2;
     elif( line[2] == "YELLOW" ):
-        fullness = [0,1,0];
+        fullness = 0.6;
     elif( line[3] == "RED" ):
-        fullness = [0,0,1];
+        fullness = 1;
+
 
     f_tfr.write(tf.train.Example(features=tf.train.Features(feature={
         "latitude": tf.train.Feature(float_list=tf.train.FloatList(value=[float(line[4][2:])])),
         "longitude": tf.train.Feature(float_list=tf.train.FloatList(value=[float(line[5][1:-2])])),
         "time": tf.train.Feature(float_list=tf.train.FloatList(value=[time])),
-        "fullness": tf.train.Feature(float_list=tf.train.FloatList(value=fullness))
+        #"fullness": tf.train.Feature(float_list=tf.train.FloatList(value=fullness))
+        "fullness": tf.train.Feature(float_list=tf.train.FloatList(value=[fullness]))
         })).SerializeToString());
 
 f_tfr.close();
