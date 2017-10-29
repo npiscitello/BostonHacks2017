@@ -1,3 +1,4 @@
 hymenoptera_data/
 *.swp
 .ipynb_checkpoints
+MNIST_data
