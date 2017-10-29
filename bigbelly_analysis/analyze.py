@@ -53,54 +53,79 @@ import tensorflow as tf
 #    }
 #  }
 
-def tfrecord_to_tensor(example_proto):
-    features = { "latitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
-                 "longitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
-                 "time": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
-                 "fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
-    return tf.parse_single_example(example_proto, features);
+def dataset_import():
+    dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
+    def parser(example_proto):
+        features = { "latitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                    "longitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                    "time": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                    "fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
+        parsed = tf.parse_single_example(example_proto, features);
+        return { "latitude": parsed["latitude"], 
+                 "longitude": parsed["longitude"], 
+                 "time": parsed["time"]}, parsed["fullness"];
+
+    dataset = dataset.map(parser);
+    dataset = dataset.batch(100);
+    dataset = dataset.repeat(1);
+    iterator = dataset.make_one_shot_iterator();
+
+    features, labels = iterator.get_next();
+    return features, labels;
 
 training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
-training_dataset = training_dataset.map(tfrecord_to_tensor);
-training_dataset = training_dataset.repeat().batch(100);
-training_iterator = training_dataset.make_one_shot_iterator();
-
 test_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
-test_dataset = test_dataset.map(tfrecord_to_tensor);
-test_dataset = test_dataset.repeat().batch(100);
-test_iterator = test_dataset.make_one_shot_iterator();
 
-# can be thought of as a 3 pixel greyscale image: lat, long, time
-x = tf.placeholder(tf.float32, [None, 3]);
+latitude = tf.feature_column.numeric_column("latitude");
+longitude = tf.feature_column.numeric_column("longitude");
+time = tf.feature_column.numeric_column("time");
 
-# weight and bias
-W = tf.Variable(tf.zeros([3, 3]));
-b = tf.Variable(tf.zeros([3]));
+estimator = tf.estimator.LinearClassifier(feature_columns = [latitude, longitude, time], n_classes = 3);
 
-# linear regression model
-fullness = tf.matmul(x, W) + b;
+estimator.train(dataset_import, steps=2000);
 
-# placeholder for the correct answers
-fullness_ = tf.placeholder(tf.float32, [None, 3]);
 
-# this is the cross-entropy and minimization function, how we calculate and minimize our loss. 
-cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=fullness_, logits=fullness));
-train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy);
-
-# run the model
-sess = tf.Session();
-sess.run(tf.global_variables_initializer());
-
-for _ in range(0,100):
-    tensor = training_iterator.get_next();
-    input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
-    verification_tensor = tensor["fullness"];
-    sess.run(train_step, {x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)});
-
-correct_prediction = tf.equal(tf.argmax(fullness,1), tf.argmax(fullness_,1));
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32));
-
-tensor = test_iterator.get_next();
-input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
-verification_tensor = tensor["fullness"];
-print("Model accuracy: ", sess.run(accuracy, feed_dict={x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)}));
+#training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
+#training_dataset = training_dataset.map(tfrecord_to_tensor);
+#training_dataset = training_dataset.repeat().batch(100);
+#training_iterator = training_dataset.make_one_shot_iterator();
+#
+#test_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
+#test_dataset = test_dataset.map(tfrecord_to_tensor);
+#test_dataset = test_dataset.repeat().batch(100);
+#test_iterator = test_dataset.make_one_shot_iterator();
+#
+## can be thought of as a 3 pixel greyscale image: lat, long, time
+#x = tf.placeholder(tf.float32, [None, 3]);
+#
+## weight and bias
+#W = tf.Variable(tf.zeros([3, 3]));
+#b = tf.Variable(tf.zeros([3]));
+#
+## linear regression model
+#fullness = tf.matmul(x, W) + b;
+#
+## placeholder for the correct answers
+#fullness_ = tf.placeholder(tf.float32, [None, 3]);
+#
+## this is the cross-entropy and minimization function, how we calculate and minimize our loss. 
+#cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=fullness_, logits=fullness));
+#train_step = tf.train.GradientDescentOptimizer(0.01).minimize(cross_entropy);
+#
+## run the model
+#sess = tf.Session();
+#sess.run(tf.global_variables_initializer());
+#
+#for _ in range(0,100):
+#    tensor = training_iterator.get_next();
+#    input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
+#    verification_tensor = tensor["fullness"];
+#    sess.run(train_step, {x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)});
+#
+#correct_prediction = tf.equal(tf.argmax(fullness,1), tf.argmax(fullness_,1));
+#accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32));
+#
+#tensor = test_iterator.get_next();
+#input_tensor = tf.concat([tensor["latitude"], tensor["longitude"], tensor["time"]], 1);
+#verification_tensor = tensor["fullness"];
+#print("Model accuracy: ", sess.run(accuracy, feed_dict={x: sess.run(input_tensor), fullness_: sess.run(verification_tensor)}));
