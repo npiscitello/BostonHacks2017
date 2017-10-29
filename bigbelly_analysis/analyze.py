@@ -60,12 +60,16 @@ def tfrecord_to_tensor(example_proto):
                  "fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
     return tf.parse_single_example(example_proto, features);
 
-dataset = tf.data.TFRecordDataset("big-belly-alerts-2014.tfrecords");
-dataset = dataset.map(tfrecord_to_tensor);
-iterator = dataset.make_one_shot_iterator();
+training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
+training_dataset = training_dataset.map(tfrecord_to_tensor);
+training_iterator = training_dataset.make_one_shot_iterator();
+
+verification_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
+verification_dataset = verification_dataset.map(tfrecord_to_tensor);
+verification_iterator = verification_dataset.make_one_shot_iterator();
 
 sess = tf.Session();
-print(sess.run([iterator.get_next()]));
+print(sess.run([training_iterator.get_next()]));
 
 # can be thought of as a 3 pixel greyscale image: lat, long, time
 x = tf.placeholder(tf.float32, [None, 3]);

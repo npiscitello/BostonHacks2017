@@ -3,9 +3,12 @@
 
 from datetime import datetime;
 import tensorflow as tf;
+import random;
 
 f_raw = open("big-belly-alerts-2014.csv");
-f_tfr = tf.python_io.TFRecordWriter("big-belly-alerts-2014.tfrecords");
+f_tfr_train = tf.python_io.TFRecordWriter("alerts_train.tfrecords");
+f_tfr_verify = tf.python_io.TFRecordWriter("alerts_verify.tfrecords");
+f_tfr = 0;
 
 # get rid of the header
 f_raw.readline();
@@ -15,6 +18,11 @@ time = 0;
 fullness = [];
 
 for i in f_raw:
+    # split about 30% of the data off to use as verification data
+    if( random.randint(0,9) <= 2 ):
+        f_tfr = f_tfr_verify;
+    else:
+        f_tfr = f_tfr_train;
     line = i.rstrip().split(',');
 
     # inputs
