@@ -62,24 +62,35 @@ def tfrecord_to_tensor(example_proto):
 
 training_dataset = tf.data.TFRecordDataset("alerts_train.tfrecords");
 training_dataset = training_dataset.map(tfrecord_to_tensor);
+training_dataset = training_dataset.repeat();
 training_iterator = training_dataset.make_one_shot_iterator();
 
 verification_dataset = tf.data.TFRecordDataset("alerts_verify.tfrecords");
 verification_dataset = verification_dataset.map(tfrecord_to_tensor);
-verification_iterator = verification_dataset.make_one_shot_iterator();
-
-sess = tf.Session();
-print(sess.run([training_iterator.get_next()]));
 
 # can be thought of as a 3 pixel greyscale image: lat, long, time
 x = tf.placeholder(tf.float32, [None, 3]);
 
-# we multiply each input tensor by unique weights and add unique biases
+# weight and bias
 W = tf.Variable(tf.zeros([3, 3]));
 b = tf.Variable(tf.zeros([3]));
 
-# the output is the sum of the linear regression for gps and time (scalar)
+# linear regression model
 fullness = tf.matmul(x, W) + b;
 
 # placeholder for the correct answers
 fullness_ = tf.placeholder(tf.float32, [None, 1]);
+
+# this is the cross-entropy and minimization function, how we calculate and minimize our loss. 
+cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=fullness_, logits=fullness));
+train_step = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy);
+
+# run the model
+sess = tf.InteractiveSession();
+tf.global_variables_initializer().run();
+
+for _ in range(0,1000):
+    tensors = training_iterator.get_next();
+    input_tensor = tf.concat([tensors["latitude"], tensors["longitude"], tensors["time"]], 0);
+    print(sess.run([input_tensor]));
+    #sess.run(train_step, feed_dict={x: batch_xs, fullness_: batch_fullnesss});
