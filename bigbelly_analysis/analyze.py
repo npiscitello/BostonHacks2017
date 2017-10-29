@@ -15,6 +15,58 @@
 
 import tensorflow as tf
 
+# made up of Examples of the following form:
+#  features {
+#    feature {
+#      key: "fullness"
+#      value {
+#        float_list {
+#          value: 1.0
+#          value: 0.0
+#          value: 0.0
+#        }
+#      }
+#    }
+#    feature {
+#      key: "latitude"
+#      value {
+#        float_list {
+#          value: 42.3471794128418
+#        }
+#      }
+#    }
+#    feature {
+#      key: "longitude"
+#      value {
+#        float_list {
+#          value: -71.09679412841797
+#        }
+#      }
+#    }
+#    feature {
+#      key: "time"
+#      value {
+#        float_list {
+#          value: 1389886848.0
+#        }
+#      }
+#    }
+#  }
+
+def tfrecord_to_tensor(example_proto):
+    features = { "latitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                 "longitude": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                 "time": tf.FixedLenFeature(shape=[1], dtype=tf.float32),
+                 "fullness": tf.FixedLenFeature(shape=[3], dtype=tf.float32) };
+    return tf.parse_single_example(example_proto, features);
+
+dataset = tf.data.TFRecordDataset("big-belly-alerts-2014.tfrecords");
+dataset = dataset.map(tfrecord_to_tensor);
+iterator = dataset.make_one_shot_iterator();
+
+sess = tf.Session();
+print(sess.run([iterator.get_next()]));
+
 # can be thought of as a 3 pixel greyscale image: lat, long, time
 x = tf.placeholder(tf.float32, [None, 3]);
 
