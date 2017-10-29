@@ -1,5 +1,3 @@
-# License: BSD
-# Author: Sasank Chilamkurthy
 
 from __future__ import print_function, division
 
@@ -36,7 +34,7 @@ data_transforms = {
     ]),
 }
 
-data_dir = 'hymenoptera_data'
+data_dir = 'data'
 image_datasets = {x: datasets.ImageFolder(os.path.join(data_dir, x),
                                           data_transforms[x])
                   for x in ['train', 'val']}
